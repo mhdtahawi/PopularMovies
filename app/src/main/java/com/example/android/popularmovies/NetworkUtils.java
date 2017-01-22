@@ -39,7 +39,7 @@ public class NetworkUtils {
 
         Uri uri = Uri.parse(base)
                                 .buildUpon()
-                                .appendQueryParameter("api_key", "f9922445d2b8a62c6201a3311c0d8f67")
+                                .appendQueryParameter("api_key", "XXXXXXXXXXXX") // insert key here
                                 .appendQueryParameter("language", "en-us")
                                 .build();
 
