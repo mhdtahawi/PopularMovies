@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:icon="@drawable/ic_refresh"
+        android:id="@+id/refresh"
+        android:title="@string/refresh">
+    </item>
+
+    <item
+
+        android:id="@+id/by_rating"
+        android:title="@string/rating">
+    </item>
+
+    <item
+
+        android:id="@+id/by_popularity"
+        android:title="@string/popularity">
+    </item>
+
+
+</menu>
