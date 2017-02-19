@@ -3,6 +3,6 @@
     <string name="refresh">Refresh</string>
     <string name="loading_message">Loading...</string>
     <string name="error_message">No internet connection detected.</string>
-    <string name="popularity">sort by popularity</string>
+    <string name="popularity">Sort by popularity</string>
     <string name="rating">Sort by rating</string>
 </resources>

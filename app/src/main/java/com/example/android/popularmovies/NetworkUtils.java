@@ -1,6 +1,10 @@
 package com.example.android.popularmovies;
 
+import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
+import android.util.Log;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -21,32 +25,32 @@ import java.util.Scanner;
 
 public class NetworkUtils {
 
-    public enum QueryCriteria {POPULARITY, RATING};
+    static final String TAG = NetworkUtils.class.getSimpleName();
 
-    private static final String POPULAR_BASE_LINK =
-            "https://api.themoviedb.org/3/movie/popular";
-
-    private static final String RATING_BASE_LINK =
-            "https://api.themoviedb.org/3/movie/top_rated";
-
-    private static final String BASE_IMAGES_PATH =
-            "http://image.tmdb.org/t/p/w500";
+    public enum QueryCriteria {POPULARITY, RATING}
 
 
-    public static URL createQueryURL(QueryCriteria criteria){
+
+
+    public static URL createMovieQueryURL(QueryCriteria criteria) {
+        String POPULAR_BASE_LINK =
+                "https://api.themoviedb.org/3/movie/popular";
+
+        String RATING_BASE_LINK =
+                "https://api.themoviedb.org/3/movie/top_rated";
 
         String base = criteria == QueryCriteria.POPULARITY ? POPULAR_BASE_LINK : RATING_BASE_LINK;
 
         Uri uri = Uri.parse(base)
-                                .buildUpon()
-                                .appendQueryParameter("api_key", "XXXXXXXXXXXX") // insert key here
-                                .appendQueryParameter("language", "en-us")
-                                .build();
+                .buildUpon()
+                .appendQueryParameter("api_key", BuildConfig.MOVIEDB_API_KEY)
+                .appendQueryParameter("language", "en-us")
+                .build();
 
         URL res = null;
 
         try {
-            res  = new URL(uri.toString());
+            res = new URL(uri.toString());
         } catch (MalformedURLException e) {
             e.printStackTrace();
         }
@@ -58,40 +62,84 @@ public class NetworkUtils {
 
     public static String getResponseFromHttpUrl(URL url) throws IOException {
 
+
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
-
         try {
+
             InputStream input = connection.getInputStream();
             Scanner scanner = new Scanner(input);
             scanner.useDelimiter("\\A");
 
             return scanner.hasNext() ? scanner.next() : null;
+        }
 
-
-        } finally {
+        finally {
             connection.disconnect();
         }
 
 
     }
 
-    public static ArrayList<Movie> getMoviesData(String object) throws JSONException {
 
-        JSONArray  arr = (JSONArray) new JSONObject(object).get("results");
+    public static boolean isOnline(Context context) {
 
-        ArrayList<Movie> res = new ArrayList<>();
+        ConnectivityManager cm =
+                (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo netInfo = cm.getActiveNetworkInfo();
+        return netInfo != null && netInfo.isConnectedOrConnecting();
+    }
 
-        for (int i = 0; i <arr.length() ; i++) {
+    public static URL createTrailersQueryURL(int id) {
 
-            arr.getJSONObject(i);
+        String BASE_URL = "https://api.themoviedb.org/3/movie/";
+        String TRAILER_PATH_SEGMENT = "videos";
 
-            res.add(new Movie(arr.getJSONObject(i)));
+        Uri uri = Uri.parse(BASE_URL).buildUpon()
+                .appendPath(String.valueOf(id))
+                .appendPath(TRAILER_PATH_SEGMENT)
+                .appendQueryParameter("api_key", BuildConfig.MOVIEDB_API_KEY)
+                .appendQueryParameter("language", "en-us")
+                .build();
+
+        URL url = null;
+
+        try {
+            url = new URL(uri.toString());
+        } catch (MalformedURLException e){
+            Log.d(TAG, "invalid Uri: " + uri.toString());
         }
 
-        return res;
-        }
-
+        return url;
 
     }
+
+
+
+    public static URL createReviewsQueryURL(int id) {
+
+        String BASE_URL = "https://api.themoviedb.org/3/movie/";
+        String REVIEWS_PATH_SEGMENT = "reviews";
+
+        Uri uri = Uri.parse(BASE_URL).buildUpon()
+                .appendPath(String.valueOf(id))
+                .appendPath(REVIEWS_PATH_SEGMENT)
+                .appendQueryParameter("api_key", BuildConfig.MOVIEDB_API_KEY)
+                .appendQueryParameter("language", "en-us")
+                .build();
+
+        URL url = null;
+
+        try {
+            url = new URL(uri.toString());
+        } catch (MalformedURLException e){
+            Log.d(TAG, "invalid Uri: " + uri.toString());
+        }
+
+        return url;
+
+    }
+
+
+}
 

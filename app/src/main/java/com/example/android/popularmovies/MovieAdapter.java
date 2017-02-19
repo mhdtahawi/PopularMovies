@@ -11,7 +11,6 @@ import android.widget.ImageView;
 
 import com.squareup.picasso.Picasso;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 
 /**
@@ -44,6 +43,13 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.MoviePoster>
     public void onBindViewHolder(MoviePoster holder, int position) {
         holder.bind(mMovies.get(position));
     }
+
+    public void changeDate (ArrayList<Movie> movies){
+        mMovies = movies;
+        notifyDataSetChanged();
+
+    }
+
 
     @Override
     public int getItemCount() {

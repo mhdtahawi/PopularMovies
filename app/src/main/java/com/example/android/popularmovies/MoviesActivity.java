@@ -1,7 +1,10 @@
 package com.example.android.popularmovies;
 
 import android.content.Intent;
-import android.os.AsyncTask;
+
+import android.support.v4.content.AsyncTaskLoader;
+import android.support.v4.content.Loader;
+import android.support.v4.app.LoaderManager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -13,23 +16,27 @@ import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import com.example.android.popularmovies.NetworkUtils.*;
+
 import org.json.JSONException;
 
 import java.io.IOException;
 import java.net.URL;
 
-public class MoviesActivity extends AppCompatActivity implements MovieAdapter.PosterClickListener {
+public class MoviesActivity extends AppCompatActivity implements MovieAdapter.PosterClickListener,
+        LoaderManager.LoaderCallbacks<String> {
 
     private QueryCriteria mSortingOrder = QueryCriteria.POPULARITY;
 
     private RecyclerView mMovieGrid;
     private GridLayoutManager mGridManager;
     private MovieAdapter mMovieAdapter;
-    private final int NUM_OF_COLS = 2;
     private LinearLayout mLoadingSection;
     private TextView mLoadTextView;
 
+    private final int MOVIE_LOADER_ID = 1;
+    private final String MOVIE_LOADER_KEY_EXTRA = "LOAD_MOVIES";
 
 
     @Override
@@ -40,8 +47,9 @@ public class MoviesActivity extends AppCompatActivity implements MovieAdapter.Po
         mLoadingSection = (LinearLayout) findViewById(R.id.ll_loading);
         mLoadTextView = (TextView) findViewById(R.id.tv_loading_message);
 
+
         mMovieGrid = (RecyclerView) findViewById(R.id.rv_grid);
-        mGridManager = new GridLayoutManager(this, NUM_OF_COLS);
+        mGridManager = new GridLayoutManager(this, getResources().getInteger(R.integer.gallery_columns));
         mMovieGrid.setLayoutManager(mGridManager);
 
         fetchData();
@@ -49,10 +57,19 @@ public class MoviesActivity extends AppCompatActivity implements MovieAdapter.Po
     }
 
 
-    private void fetchData(){
+    private void fetchData() {
         mLoadTextView.setText(R.string.loading_message);
         showLoadingSection();
-        new movieQueryTask().execute(NetworkUtils.createQueryURL(mSortingOrder));
+
+
+        Bundle args = new Bundle();
+        args.putString(MOVIE_LOADER_KEY_EXTRA, NetworkUtils.createMovieQueryURL(mSortingOrder).toString());
+
+        if (getSupportLoaderManager().getLoader(MOVIE_LOADER_ID) == null)
+            getSupportLoaderManager().initLoader(MOVIE_LOADER_ID, args, this);
+        else
+            getSupportLoaderManager().restartLoader(MOVIE_LOADER_ID, args, this);
+
     }
 
     @Override
@@ -111,72 +128,123 @@ public class MoviesActivity extends AppCompatActivity implements MovieAdapter.Po
     }
 
 
-    public class movieQueryTask extends AsyncTask<URL, Void, String> {
+    @Override
+    public Loader<String> onCreateLoader(int id, final Bundle args) {
+        return new AsyncTaskLoader<String>(this) {
 
-        boolean isConnected;
+            String res;
 
-        public boolean isOnline() {
+            @Override
+            public String loadInBackground() {
 
-            return true;
-//            Runtime runtime = Runtime.getRuntime();
-//            try {
-//
-//                Process ipProcess = runtime.exec("/system/bin/ping -c 1 8.8.8.8");
-//                int exitValue = ipProcess.waitFor();
-//                Log.d("TAG", "VALUE IS " + String.valueOf(exitValue));
-//                return (exitValue == 0);
-//
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            } catch (InterruptedException e) {
-//                e.printStackTrace();
-//            }
-//
-//            return false;
-        }
+                if (!NetworkUtils.isOnline(getApplicationContext()))
+                    return res;
+                try {
+                    URL url = new URL(args.getString(MOVIE_LOADER_KEY_EXTRA));
+                    res = NetworkUtils.getResponseFromHttpUrl(url);
 
-        @Override
-        protected void onPreExecute() {
-            showLoadingSection();
-            isConnected = isOnline();
-            super.onPreExecute();
-        }
-
-        @Override
-        protected String doInBackground(URL... params) {
-
-            String res = null;
-
-            if (!isConnected)
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
                 return res;
-            try {
-                res = NetworkUtils.getResponseFromHttpUrl(params[0]);
-            } catch (IOException e) {
-                e.printStackTrace();
+
             }
-            return res;
+
+            @Override
+            protected void onStartLoading() {
+
+                if (args == null) return;
+                res = null;
+
+                showLoadingSection();
+
+
+                if (res != null)
+                    deliverResult(res);
+                else
+                    forceLoad();
+
+            }
+
+            @Override
+            public void deliverResult(String data) {
+                res = data;
+                super.deliverResult(data);
+            }
+
+
+
+
+        };
+    }
+
+    @Override
+    public void onLoadFinished(Loader<String> loader, String data) {
+        if (!NetworkUtils.isOnline(getApplicationContext())) {
+            mLoadTextView.setText(R.string.error_message);
+            return;
         }
 
-        @Override
-        protected void onPostExecute(String s) {
-            if (!isConnected) {
-                mLoadTextView.setText(R.string.error_message);
-                return;
-            }
+        try {
 
-
-            try {
-
-                mMovieAdapter = new MovieAdapter(NetworkUtils.getMoviesData(s), MoviesActivity.this);
-
+            if (mMovieAdapter != null) {
+                mMovieAdapter.changeDate(Movie.getMoviesData(data));
+            } else {
+                mMovieAdapter = new MovieAdapter(Movie.getMoviesData(data), MoviesActivity.this);
                 mMovieGrid.setAdapter(mMovieAdapter);
-
-            } catch (JSONException e) {
-                e.printStackTrace();
             }
-            showGridSection();
-            super.onPostExecute(s);
+
+        } catch (JSONException e) {
+            e.printStackTrace();
         }
+        showGridSection();
+
 
     }
+
+    @Override
+    public void onLoaderReset(Loader<String> loader) {
+
+    }
+
+
+//    public class movieQueryTask extends AsyncTask<URL, Void, String> {
+//
+//        boolean isConnected;
+//
+//        public boolean isOnline() {
+//            ConnectivityManager cm =
+//                    (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+//            NetworkInfo netInfo = cm.getActiveNetworkInfo();
+//            return netInfo != null && netInfo.isConnectedOrConnecting();
+//        }
+//
+//        @Override
+//        protected void onPreExecute() {
+//            showLoadingSection();
+//            isConnected = isOnline();
+//            super.onPreExecute();
+//        }
+//
+//        @Override
+//        protected String doInBackground(URL... params) {
+//
+//            String res = null;
+//
+//            if (!isConnected)
+//                return res;
+//            try {
+//                res = NetworkUtils.getResponseFromHttpUrl(params[0]);
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//            return res;
+//        }
+//
+//        @Override
+//        protected void onPostExecute(String s) {
+//            super.onPostExecute(s);
+//        }
+//
+//    }
 }
