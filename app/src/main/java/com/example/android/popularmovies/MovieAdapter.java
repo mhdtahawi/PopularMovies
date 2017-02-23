@@ -44,7 +44,7 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.MoviePoster>
         holder.bind(mMovies.get(position));
     }
 
-    public void changeDate (ArrayList<Movie> movies){
+    public void changeData(ArrayList<Movie> movies){
         mMovies = movies;
         notifyDataSetChanged();
 

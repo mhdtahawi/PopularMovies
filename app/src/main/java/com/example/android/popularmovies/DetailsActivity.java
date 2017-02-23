@@ -1,7 +1,8 @@
 package com.example.android.popularmovies;
 
-import android.content.ActivityNotFoundException;
+import android.content.ContentValues;
 import android.content.Intent;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.PersistableBundle;
 import android.support.v4.app.LoaderManager;
@@ -15,26 +16,27 @@ import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 import android.widget.ToggleButton;
 
+import com.example.android.popularmovies.data.MovieContract;
 import com.squareup.picasso.Picasso;
 
 import org.json.JSONException;
 
 import java.io.IOException;
 import java.net.URL;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 
-public class DetailsActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<String[]> {
+public class DetailsActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<String[]>, ToggleButton.OnClickListener {
 
 
     private static final String TAG = DetailsActivity.class.getSimpleName();
     TextView mTitle, mRating, mPlot, mDate;
     ImageView mPoster;
     ToggleButton mStar;
-    int mMovieId;
+    Movie mMovie;
+
     boolean mIsFavourite;
     final String IS_FAV_KEY = "favKey";
 
@@ -47,6 +49,8 @@ public class DetailsActivity extends AppCompatActivity implements LoaderManager.
         setContentView(R.layout.activity_details);
 
         mStar = (ToggleButton) findViewById(R.id.star_button);
+        mStar.setOnClickListener(this);
+
 
         if (savedInstanceState != null) {
             mIsFavourite = savedInstanceState.getBoolean(IS_FAV_KEY);
@@ -54,30 +58,36 @@ public class DetailsActivity extends AppCompatActivity implements LoaderManager.
         }
 
 
+
         Intent intent = getIntent();
 
-
         if (intent != null && intent.hasExtra("MOVIE")) {
-            Movie movie = intent.getParcelableExtra("MOVIE");
+            mMovie = intent.getParcelableExtra("MOVIE");
 
-            mMovieId = movie.getId();
+
+        Cursor cursor = getContentResolver().query(MovieContract.buildMovieUriWithId(mMovie.getId()), null, null, null, null);
+
+            if (cursor.getCount() > 0){
+                mStar.setChecked(true);
+            }
+
+
 
             mTitle = (TextView) findViewById(R.id.tv_movie_name);
-            mTitle.setText(movie.getTitle());
+            mTitle.setText(mMovie.getTitle());
 
 
             mRating = (TextView) findViewById(R.id.tv_movie_rating);
-            mRating.setText(String.valueOf(movie.getRating()).toString() + "/10");
+            mRating.setText(String.valueOf(mMovie.getRating()).toString() + "/10");
 
-            DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
             mDate = (TextView) findViewById(R.id.tv_movie_year);
-            mDate.setText(df.format(movie.getDate()));
+            mDate.setText(mMovie.getDate());
 
             mPlot = (TextView) findViewById(R.id.tv_movie_overview);
-            mPlot.setText(movie.getOverview());
+            mPlot.setText(mMovie.getOverview());
 
             mPoster = (ImageView) findViewById(R.id.iv_poster);
-            Picasso.with(mPoster.getContext()).load(movie.getPosterLink()).into(mPoster);
+            Picasso.with(mPoster.getContext()).load(mMovie.getPosterLink()).into(mPoster);
         }
         Log.d(TAG, "INIT LOADER");
         getSupportLoaderManager().initLoader(TRAILER_AND_REVIEW_LOADER_ID, null, this);
@@ -111,8 +121,8 @@ public class DetailsActivity extends AppCompatActivity implements LoaderManager.
 
                 String[] res = new String[2];
 
-                URL trailerURL = NetworkUtils.createTrailersQueryURL(mMovieId);
-                URL reviewsURL = NetworkUtils.createReviewsQueryURL(mMovieId);
+                URL trailerURL = NetworkUtils.createTrailersQueryURL(mMovie.getId());
+                URL reviewsURL = NetworkUtils.createReviewsQueryURL(mMovie.getId());
 
 
                 try {
@@ -140,49 +150,57 @@ public class DetailsActivity extends AppCompatActivity implements LoaderManager.
             LinearLayout parent = (LinearLayout) findViewById(R.id.ll_trailers);
 
 
-            int i = 1;
-            for (String trailer : trailers) {
+            if (!trailers.isEmpty())
+
+             {
+                 parent.setVisibility(View.VISIBLE);
+                int i = 1;
+                for (String trailer : trailers) {
 
 
-                View view = getLayoutInflater().from(parent.getContext()).inflate(R.layout.trailer_view, parent, false);
+                    View view = getLayoutInflater().from(parent.getContext()).inflate(R.layout.trailer_view, parent, false);
 
-                view.setVisibility(View.VISIBLE);
-                TextView tv = (TextView) view.findViewById(R.id.tv_movie_trailer);
-                tv.setTag(trailer);
-                tv.setText("trailer " + i++);
+                    view.setVisibility(View.VISIBLE);
+                    TextView tv = (TextView) view.findViewById(R.id.tv_movie_trailer);
+                    tv.setTag(trailer);
+                    tv.setText("trailer " + i++);
 
-                tv.setOnClickListener(new View.OnClickListener() {
+                    view.setOnClickListener(new View.OnClickListener() {
 
-                                          @Override
-                                          public void onClick(View v) {
-                                              String link = (String) v.getTag();
-                                              Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(link));
-                                              Intent chooser = Intent.createChooser(intent, "Choose App");
-                                              if (intent.resolveActivity(getPackageManager()) != null) {
-                                                  startActivity(chooser);
+                                              @Override
+                                              public void onClick(View v) {
+                                                  String link = (String) v.getTag();
+                                                  Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(link));
+                                                  Intent chooser = Intent.createChooser(intent, "Choose App");
+                                                  if (intent.resolveActivity(getPackageManager()) != null) {
+                                                      startActivity(chooser);
+                                                  }
+
                                               }
-
                                           }
-                                      }
 
-                );
+                    );
 
-                parent.addView(view);
+                    parent.addView(view);
+                }
 
             }
 
 
             parent = (LinearLayout) findViewById(R.id.ll_reviews);
 
-            for (String review : reviews) {
-                TextView view = new TextView(parent.getContext());
-                view.setText(review);
-                parent.addView(view);
+            if (! reviews.isEmpty())
+             {
+                 parent.setVisibility(View.VISIBLE);
+                for (String review : reviews) {
+                    TextView view = new TextView(parent.getContext());
+                    view.setText(review);
+                    parent.addView(view);
 
+                }
             }
 
 
-            Log.d("TAG", "FINISH LOADER FOR TRAILER");
 
         } catch (JSONException e) {
             Log.d(TAG, "Invalid Json response", e);
@@ -193,6 +211,31 @@ public class DetailsActivity extends AppCompatActivity implements LoaderManager.
 
     @Override
     public void onLoaderReset(Loader<String[]> loader) {
+
+    }
+
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()){
+            case R.id.star_button:
+                if (mStar.isChecked()) {
+                    ContentValues cv = new ContentValues();
+                    cv.put(MovieContract.MovieEntry.COLUMN_ID, mMovie.getId());
+                    cv.put(MovieContract.MovieEntry.COLUMN_TITLE, mMovie.getTitle());
+                    cv.put(MovieContract.MovieEntry.COLUMN_POSTER, mMovie.getPosterPath());
+                    cv.put(MovieContract.MovieEntry.COLUMN_PLOT, mMovie.getOverview());
+                    cv.put(MovieContract.MovieEntry.COLUMN_RATING, mMovie.getRating());
+                    cv.put(MovieContract.MovieEntry.COLUMN_DATE, mMovie.getDate());
+                    getContentResolver().insert(MovieContract.MovieEntry.CONTENT_URI, cv );
+                    Toast.makeText(this, "Added to favourite.", Toast.LENGTH_SHORT).show();
+                }
+                else {
+                    getContentResolver().delete(MovieContract.buildMovieUriWithId(mMovie.getId()), null, null);
+                    Toast.makeText(this, "Deleted from favourite.", Toast.LENGTH_SHORT).show();
+                }
+
+                break;
+        }
 
     }
 }

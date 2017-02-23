@@ -2,17 +2,12 @@ package com.example.android.popularmovies;
 
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.util.Log;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.text.DateFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 
 /**
  * Created by monac on 1/22/2017.
@@ -22,39 +17,48 @@ public class Movie implements Parcelable {
 
 
     private int mId;
-    private Date mDate;
+    private String mDate;
     private double mRating;
-    private String mPosterLink;
+    private String mPosterPath;
     private String mTitle;
     private String mOverview;
 
     private static final String BASE_IMAGES_PATH =
             "http://image.tmdb.org/t/p/w500";
 
+    public Movie (int id, String date, double rating, String posterPath, String title, String Overview){
+        mId = id;
+        mDate = date;
+        mRating = rating;
+        mPosterPath = posterPath;
+        mTitle = title;
+        mOverview = Overview;
+
+    }
+
     public Movie(JSONObject object) {
 
-        DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
+
         try {
-            mDate = df.parse(object.getString("release_date"));
+            mDate = object.getString("release_date");
             mOverview = object.getString("overview");
             mRating = object.getDouble("vote_average");
             mTitle = object.getString("title");
-            mPosterLink = object.getString("poster_path");
+            mPosterPath = object.getString("poster_path");
             mId = object.getInt("id");
 
-        } catch (ParseException e) {
-            e.printStackTrace();
-
-        } catch (JSONException e) {
+        }  catch (JSONException e) {
             e.printStackTrace();
         }
     }
+
+
 
     public double getRating() {
         return mRating;
     }
 
-    public Date getDate() {
+    public String getDate() {
         return mDate;
     }
 
@@ -63,8 +67,9 @@ public class Movie implements Parcelable {
     }
 
     public String getPosterLink() {
-        return BASE_IMAGES_PATH + mPosterLink;
+        return BASE_IMAGES_PATH + mPosterPath;
     }
+    public String getPosterPath (){return mPosterPath;}
 
     public String getTitle() {
         return mTitle;
@@ -77,10 +82,10 @@ public class Movie implements Parcelable {
 
     protected Movie(Parcel in) {
         mId = in.readInt();
-        long tmpMDate = in.readLong();
-        mDate = tmpMDate != -1 ? new Date(tmpMDate) : null;
+
+        mDate = in.readString();
         mRating = in.readDouble();
-        mPosterLink = in.readString();
+        mPosterPath = in.readString();
         mTitle = in.readString();
         mOverview = in.readString();
     }
@@ -93,9 +98,9 @@ public class Movie implements Parcelable {
     @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeInt(mId);
-        dest.writeLong(mDate != null ? mDate.getTime() : -1L);
+        dest.writeString(mDate);
         dest.writeDouble(mRating);
-        dest.writeString(mPosterLink);
+        dest.writeString(mPosterPath);
         dest.writeString(mTitle);
         dest.writeString(mOverview);
     }

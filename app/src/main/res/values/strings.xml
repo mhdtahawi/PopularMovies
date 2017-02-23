@@ -5,4 +5,7 @@
     <string name="error_message">No internet connection detected.</string>
     <string name="popularity">Sort by popularity</string>
     <string name="rating">Sort by rating</string>
+    <string name="provider_authority">com.example.android.popularmovies</string>
+    <string name="fav_movies">Favourite</string>
+
 </resources>
