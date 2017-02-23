@@ -152,7 +152,7 @@ public class MoviesActivity extends AppCompatActivity implements MovieAdapter.Po
                 break;
 
             case R.id.fav_movies:
-                getSupportLoaderManager().initLoader(MOVIE_LOADER_FROM_DB_ID, null, mCursorCallBacks);
+                getSupportLoaderManager().restartLoader(MOVIE_LOADER_FROM_DB_ID, null, mCursorCallBacks);
         }
 
 
