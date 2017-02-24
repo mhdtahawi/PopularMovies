@@ -1,8 +1,11 @@
 package com.example.android.popularmovies;
 
+import android.content.Context;
 import android.content.Intent;
 
+import android.content.SharedPreferences;
 import android.database.Cursor;
+import android.preference.Preference;
 import android.support.v4.content.AsyncTaskLoader;
 import android.support.v4.content.CursorLoader;
 import android.support.v4.content.Loader;
@@ -55,7 +58,7 @@ public class MoviesActivity extends AppCompatActivity implements MovieAdapter.Po
 
             ArrayList<Movie> movies = new ArrayList<>();
 
-            while (data.moveToNext()){
+            while (data.moveToNext()) {
                 int id = data.getInt(ID_COLUMN_INDEX);
                 String date = data.getString(DATE_COLUMN_INDEX);
                 double rating = data.getDouble(RATIING_COLUMN_INDEX);
@@ -66,10 +69,17 @@ public class MoviesActivity extends AppCompatActivity implements MovieAdapter.Po
                 movies.add(new Movie(id, date, rating, poster, title, plot));
 
 
-
             }
 
-            mMovieAdapter.changeData(movies);
+            if (mMovieAdapter != null) {
+                mMovieAdapter.changeData(movies);
+            } else {
+                mMovieAdapter = new MovieAdapter(movies, MoviesActivity.this);
+                mMovieGrid.setAdapter(mMovieAdapter);
+            }
+
+
+            showGridSection();
 
         }
 
@@ -80,6 +90,41 @@ public class MoviesActivity extends AppCompatActivity implements MovieAdapter.Po
     };
 
     private QueryCriteria mSortingOrder = QueryCriteria.POPULARITY;
+
+    enum MoviesSource {
+        Rating(0), Popularity(1), Favorite(2);
+
+        private int value;
+
+        MoviesSource(int v) {
+            value = v;
+        }
+
+        public int getValue() {
+            return value;
+        }
+
+        public static MoviesSource intToMoviesSource(int i) {
+            switch (i) {
+                case 0:
+                    return Rating;
+
+                case 1:
+                    return Popularity;
+
+
+                case 2:
+                default:
+                    return Favorite;
+            }
+
+
+        }
+
+
+    }
+
+    private final String MOVIES_SOURCE_PREFERENCE = "MOVIES_SOURCE_PREFERENCE";
 
     private RecyclerView mMovieGrid;
     private GridLayoutManager mGridManager;
@@ -115,13 +160,29 @@ public class MoviesActivity extends AppCompatActivity implements MovieAdapter.Po
         showLoadingSection();
 
 
-        Bundle args = new Bundle();
-        args.putString(MOVIE_LOADER_KEY_EXTRA, NetworkUtils.createMovieQueryURL(mSortingOrder).toString());
+        int enumValue = getPreferences(Context.MODE_PRIVATE).getInt(MOVIES_SOURCE_PREFERENCE, MoviesSource.Popularity.value);
 
-        if (getSupportLoaderManager().getLoader(MOVIE_LOADER_FROM_WEB_ID) == null)
-            getSupportLoaderManager().initLoader(MOVIE_LOADER_FROM_WEB_ID, args, this);
-        else
-            getSupportLoaderManager().restartLoader(MOVIE_LOADER_FROM_WEB_ID, args, this);
+        MoviesSource source = MoviesSource.intToMoviesSource(enumValue);
+
+        Bundle args = new Bundle();
+
+        switch (source) {
+            case Popularity:
+                mSortingOrder = QueryCriteria.POPULARITY;
+                args.putString(MOVIE_LOADER_KEY_EXTRA, NetworkUtils.createMovieQueryURL(mSortingOrder).toString());
+                getSupportLoaderManager().restartLoader(MOVIE_LOADER_FROM_WEB_ID, args, this);
+                break;
+
+            case Rating:
+                mSortingOrder = QueryCriteria.RATING;
+                args.putString(MOVIE_LOADER_KEY_EXTRA, NetworkUtils.createMovieQueryURL(mSortingOrder).toString());
+                getSupportLoaderManager().restartLoader(MOVIE_LOADER_FROM_WEB_ID, args, this);
+
+            case Favorite:
+                getSupportLoaderManager().restartLoader(MOVIE_LOADER_FROM_DB_ID, null, mCursorCallBacks);
+                break;
+
+        }
 
     }
 
@@ -134,25 +195,35 @@ public class MoviesActivity extends AppCompatActivity implements MovieAdapter.Po
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
+        SharedPreferences.Editor editor = getPreferences(Context.MODE_PRIVATE).edit();
 
         switch (id) {
             case R.id.refresh:
                 Toast.makeText(this, "Refreshing", Toast.LENGTH_SHORT).show();
                 fetchData();
+
+
                 break;
 
             case R.id.by_popularity:
                 mSortingOrder = QueryCriteria.POPULARITY;
+                editor.putInt(MOVIES_SOURCE_PREFERENCE, MoviesSource.Popularity.getValue());
+                editor.commit();
                 fetchData();
+
                 break;
 
             case R.id.by_rating:
                 mSortingOrder = QueryCriteria.RATING;
+                editor.putInt(MOVIES_SOURCE_PREFERENCE, MoviesSource.Rating.getValue());
+                editor.commit();
                 fetchData();
                 break;
 
             case R.id.fav_movies:
-                getSupportLoaderManager().restartLoader(MOVIE_LOADER_FROM_DB_ID, null, mCursorCallBacks);
+                editor.putInt(MOVIES_SOURCE_PREFERENCE, MoviesSource.Favorite.getValue());
+                editor.commit();
+                fetchData();
         }
 
 
@@ -234,10 +305,6 @@ public class MoviesActivity extends AppCompatActivity implements MovieAdapter.Po
 
     @Override
     public void onLoadFinished(Loader<String> loader, String data) {
-//        if (!NetworkUtils.isOnline(getApplicationContext())) {
-//            mLoadTextView.setText(R.string.error_message);
-//            return;
-//        }
 
         try {
 

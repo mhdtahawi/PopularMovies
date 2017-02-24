@@ -104,8 +104,7 @@ public class MovieProvider extends ContentProvider {
                 } catch (SQLException e){
                     Log.d("TAG", "Failed to insert ", e);
                 }
-//                if (id == -1)
-//                    throw new SQLException("Failed to insert row into database");
+
                 break;
             default:
                 throw new UnsupportedOperationException("Unknown URI "  + uri);

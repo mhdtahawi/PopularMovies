@@ -25,6 +25,7 @@ import com.squareup.picasso.Picasso;
 import org.json.JSONException;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 
@@ -107,7 +108,7 @@ public class DetailsActivity extends AppCompatActivity implements LoaderManager.
 
             @Override
             protected void onStartLoading() {
-                Log.d("TAG", "START LOADER FOR TRAILER");
+
                 forceLoad();
                 super.onStartLoading();
 
@@ -140,6 +141,21 @@ public class DetailsActivity extends AppCompatActivity implements LoaderManager.
         };
     }
 
+
+    private String extractYoutubeId(String url) throws MalformedURLException {
+        String query = new URL(url).getQuery();
+        String[] param = query.split("&");
+        String id = null;
+        for (String row : param) {
+            String[] param1 = row.split("=");
+            if (param1[0].equals("v")) {
+                id = param1[1];
+            }
+        }
+        return id;
+    }
+
+
     @Override
     public void onLoadFinished(Loader<String[]> loader, String[] data) {
 
@@ -159,11 +175,23 @@ public class DetailsActivity extends AppCompatActivity implements LoaderManager.
 
 
                     View view = getLayoutInflater().from(parent.getContext()).inflate(R.layout.trailer_view, parent, false);
+                    ImageView thumnail = (ImageView) view.findViewById(R.id.iv_trailer_thumbnail);
+
+                    try {
+                        String video_id = extractYoutubeId(trailer);
+                        String url = "http://img.youtube.com/vi/" + video_id + "/0.jpg";
+                        Picasso.with(DetailsActivity.this)
+                                .load(url)
+                                .placeholder(android.R.drawable.ic_media_play)
+                                .into(thumnail);
+                    }catch (MalformedURLException e){
+                        // too bad
+                    }
 
                     view.setVisibility(View.VISIBLE);
-                    TextView tv = (TextView) view.findViewById(R.id.tv_movie_trailer);
-                    tv.setTag(trailer);
-                    tv.setText("trailer " + i++);
+
+                    view.setTag(trailer);
+
 
                     view.setOnClickListener(new View.OnClickListener() {
 
